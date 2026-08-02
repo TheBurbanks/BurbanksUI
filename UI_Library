@@ -639,13 +639,12 @@ function Library:Notify(data)
 	local progressTrack = create("Frame", {
 		Parent = holder,
 		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.new(0, 16, 1, -12),
-		Size = UDim2.new(1, -32, 0, 6),
+		Position = UDim2.new(0, 0, 1, 0),
+		Size = UDim2.new(1, 0, 0, 3),
 		BorderSizePixel = 0,
 		ZIndex = 52,
 	})
 	bindTheme(self, progressTrack, "BackgroundColor3", "Background2")
-	corner(progressTrack, 6)
 
 	local progressFill = create("Frame", {
 		Parent = progressTrack,
@@ -654,7 +653,6 @@ function Library:Notify(data)
 		ZIndex = 53,
 	})
 	bindTheme(self, progressFill, "BackgroundColor3", "Accent")
-	corner(progressFill, 6)
 
 	local title = createLabel(
 		self,
@@ -1664,35 +1662,20 @@ function Section:addDropdown(data)
 		48
 	)
 
-	local arrow
-	local lucide = getLucide()
+	local arrow = createLabel(
+		self.library,
+		header,
+		"v",
+		15,
+		Enum.Font.GothamBold
+	)
 
-	if lucide and typeof(lucide.ImageLabel) == "function" then
-		local success, lucideArrow = pcall(function()
-			return lucide.ImageLabel("chevron-down", 48, {
-				Parent = header,
-				BackgroundTransparency = 1,
-				AnchorPoint = Vector2.new(1, 0.5),
-				Position = UDim2.new(1, -14, 0.5, 0),
-				Size = UDim2.fromOffset(17, 17),
-				ScaleType = Enum.ScaleType.Fit,
-			})
-		end)
-
-		if success then
-			arrow = lucideArrow
-			bindTheme(self.library, arrow, "ImageColor3", "Muted")
-		end
-	end
-
-	if not arrow then
-		arrow = createLabel(self.library, header, "▼", 10, Enum.Font.GothamBold)
-		arrow.AnchorPoint = Vector2.new(1, 0.5)
-		arrow.Position = UDim2.new(1, -12, 0.5, 0)
-		arrow.Size = UDim2.fromOffset(22, 22)
-		arrow.TextXAlignment = Enum.TextXAlignment.Center
-		bindTheme(self.library, arrow, "TextColor3", "Muted")
-	end
+	arrow.AnchorPoint = Vector2.new(1, 0.5)
+	arrow.Position = UDim2.new(1, -12, 0.5, 0)
+	arrow.Size = UDim2.fromOffset(20, 20)
+	arrow.TextXAlignment = Enum.TextXAlignment.Center
+	arrow.TextYAlignment = Enum.TextYAlignment.Center
+	bindTheme(self.library, arrow, "TextColor3", "Muted")
 
 	local search = create("TextBox", {
 		Parent = module,
@@ -1737,19 +1720,12 @@ function Section:addDropdown(data)
 		search.Visible = opened
 		list.Visible = opened
 
-		local arrowColor = opened and self.library.theme.Accent or self.library.theme.Muted
-
-		if arrow:IsA("ImageLabel") or arrow:IsA("ImageButton") then
-			tween(arrow, 0.18, {
-				Rotation = opened and 180 or 0,
-				ImageColor3 = arrowColor,
-			})
-		else
-			tween(arrow, 0.18, {
-				Rotation = opened and 180 or 0,
-				TextColor3 = arrowColor,
-			})
-		end
+		tween(arrow, 0.15, {
+			Rotation = opened and 180 or 0,
+			TextColor3 = opened
+				and self.library.theme.Accent
+				or self.library.theme.Muted,
+		})
 
 		tween(module, 0.18, {
 			Size = UDim2.new(1, 0, 0, opened and 194 or 44),
@@ -2049,3 +2025,4 @@ end
 Section.AddColorPicker = Section.addColorPicker
 
 return Library
+
