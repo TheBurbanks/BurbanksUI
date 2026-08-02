@@ -604,6 +604,26 @@ function Library:Notify(data)
 	})
 	bindTheme(self, bar, "BackgroundColor3", "Accent")
 
+	local progressTrack = create("Frame", {
+		Parent = holder,
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, 12, 1, -10),
+		Size = UDim2.new(1, -24, 0, 5),
+		BorderSizePixel = 0,
+		ZIndex = 52,
+	})
+	bindTheme(self, progressTrack, "BackgroundColor3", "Background2")
+	corner(progressTrack, 6)
+
+	local progressFill = create("Frame", {
+		Parent = progressTrack,
+		Size = UDim2.new(0, 0, 1, 0),
+		BorderSizePixel = 0,
+		ZIndex = 53,
+	})
+	bindTheme(self, progressFill, "BackgroundColor3", "Accent")
+	corner(progressFill, 6)
+
 	local title = createLabel(
 		self,
 		holder,
@@ -670,6 +690,7 @@ function Library:Notify(data)
 	tween(holder, 0.2, {Size = UDim2.fromOffset(width, 120)})
 
 	local closed = false
+	local progressTween
 
 	local function close(result)
 		if closed then
@@ -677,6 +698,11 @@ function Library:Notify(data)
 		end
 
 		closed = true
+
+		if progressTween then
+			progressTween:Cancel()
+		end
+
 		safeCall(data.callback or data.Callback, result)
 
 		tween(holder, 0.2, {
@@ -694,13 +720,23 @@ function Library:Notify(data)
 		close(false)
 	end)
 
-	if data.duration then
-		task.delay(tonumber(data.duration) or 5, function()
-			if holder.Parent then
-				close(nil)
-			end
-		end)
-	end
+	local duration = tonumber(data.duration) or 5
+
+	progressTween = tween(
+		progressFill,
+		duration,
+		{
+			Size = UDim2.new(1, 0, 1, 0),
+		},
+		Enum.EasingStyle.Linear,
+		Enum.EasingDirection.Out
+	)
+
+	progressTween.Completed:Connect(function(playbackState)
+		if playbackState == Enum.PlaybackState.Completed and holder.Parent then
+			close(nil)
+		end
+	end)
 
 	return {
 		Instance = holder,
