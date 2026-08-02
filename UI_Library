@@ -623,7 +623,7 @@ function Library:Notify(data)
 		Parent = self.container,
 		AnchorPoint = Vector2.new(1, 1),
 		Position = UDim2.new(1, -16, 1, -16),
-		Size = UDim2.fromOffset(0, 120),
+		Size = UDim2.fromOffset(0, 140),
 		BorderSizePixel = 0,
 		ClipsDescendants = true,
 		ZIndex = 50,
@@ -635,19 +635,12 @@ function Library:Notify(data)
 	local holderStroke = stroke(holder, self.theme.Stroke, 0, 1)
 	bindTheme(self, holderStroke, "Color", "Stroke")
 
-	local bar = create("Frame", {
-		Parent = holder,
-		Size = UDim2.new(0, 3, 1, 0),
-		BorderSizePixel = 0,
-		ZIndex = 51,
-	})
-	bindTheme(self, bar, "BackgroundColor3", "Accent")
 
 	local progressTrack = create("Frame", {
 		Parent = holder,
 		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.new(0, 12, 1, -10),
-		Size = UDim2.new(1, -24, 0, 5),
+		Position = UDim2.new(0, 16, 1, -12),
+		Size = UDim2.new(1, -32, 0, 6),
 		BorderSizePixel = 0,
 		ZIndex = 52,
 	})
@@ -667,66 +660,37 @@ function Library:Notify(data)
 		self,
 		holder,
 		tostring(data.title or data.Title or "NOTIFICATION"),
-		11,
+		16,
 		Enum.Font.GothamBold
 	)
-	title.Position = UDim2.fromOffset(18, 12)
-	title.Size = UDim2.new(1, -100, 0, 22)
+	title.Position = UDim2.fromOffset(20, 16)
+	title.Size = UDim2.new(1, -40, 0, 28)
 	title.ZIndex = 51
 
 	local text = createLabel(
 		self,
 		holder,
 		tostring(data.text or data.Text or ""),
-		10,
-		Enum.Font.Gotham
+		14,
+		Enum.Font.GothamMedium
 	)
-	text.Position = UDim2.fromOffset(18, 40)
-	text.Size = UDim2.new(1, -100, 0, 60)
+	text.Position = UDim2.fromOffset(20, 50)
+	text.Size = UDim2.new(1, -40, 0, 66)
 	text.TextWrapped = true
 	text.TextYAlignment = Enum.TextYAlignment.Top
 	text.ZIndex = 51
 	bindTheme(self, text, "TextColor3", "Muted")
 
-	local yes = create("TextButton", {
-		Parent = holder,
-		Position = UDim2.new(1, -64, 0, 14),
-		Size = UDim2.fromOffset(28, 28),
-		BorderSizePixel = 0,
-		Font = Enum.Font.GothamBold,
-		Text = "✓",
-		TextSize = 11,
-		AutoButtonColor = false,
-		ZIndex = 51,
-	})
-	bindTheme(self, yes, "BackgroundColor3", "Accent")
-	yes.TextColor3 = Color3.fromRGB(4, 12, 18)
-	corner(yes, 8)
-
-	local no = create("TextButton", {
-		Parent = holder,
-		Position = UDim2.new(1, -64, 0, 46),
-		Size = UDim2.fromOffset(28, 28),
-		BorderSizePixel = 0,
-		Font = Enum.Font.GothamBold,
-		Text = "×",
-		TextSize = 12,
-		AutoButtonColor = false,
-		ZIndex = 51,
-	})
-	bindTheme(self, no, "BackgroundColor3", "Card2")
-	bindTheme(self, no, "TextColor3", "Muted")
-	corner(no, 8)
 
 	local measured = TextService:GetTextSize(
 		text.Text,
-		10,
-		Enum.Font.Gotham,
-		Vector2.new(420, 70)
+		14,
+		Enum.Font.GothamMedium,
+		Vector2.new(480, 80)
 	)
 
-	local width = math.clamp(measured.X + 180, 380, 600)
-	tween(holder, 0.2, {Size = UDim2.fromOffset(width, 120)})
+	local width = math.clamp(measured.X + 100, 430, 680)
+	tween(holder, 0.2, {Size = UDim2.fromOffset(width, 140)})
 
 	local closed = false
 	local progressTween
@@ -745,19 +709,11 @@ function Library:Notify(data)
 		safeCall(data.callback or data.Callback, result)
 
 		tween(holder, 0.2, {
-			Size = UDim2.fromOffset(0, 120),
+			Size = UDim2.fromOffset(0, 140),
 		}).Completed:Wait()
 
 		holder:Destroy()
 	end
-
-	yes.MouseButton1Click:Connect(function()
-		close(true)
-	end)
-
-	no.MouseButton1Click:Connect(function()
-		close(false)
-	end)
 
 	local duration = tonumber(data.duration) or 5
 
@@ -2057,3 +2013,4 @@ end
 Section.AddColorPicker = Section.addColorPicker
 
 return Library
+
