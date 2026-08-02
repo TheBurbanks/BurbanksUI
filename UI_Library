@@ -2049,4 +2049,3 @@ end
 Section.AddColorPicker = Section.addColorPicker
 
 return Library
-
