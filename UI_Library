@@ -472,8 +472,13 @@ function Library.new(data)
 	return self
 end
 
-Library.CreateWindow = Library.new
-Library.Create = Library.new
+function Library:CreateWindow(data)
+	return Library.new(data or {})
+end
+
+function Library:Create(data)
+	return Library.new(data or {})
+end
 
 function Library:setTitle(title)
 	self.title = tostring(title or "BURBANKS")
