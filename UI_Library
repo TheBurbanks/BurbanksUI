@@ -15,7 +15,46 @@ local TweenService = game:GetService("TweenService")
 local TextService = game:GetService("TextService")
 
 local LocalPlayer = Players.LocalPlayer
-assert(LocalPlayer, "NeverVenyx must run on the client.")
+assert(LocalPlayer, "Burbanks must run on the client.")
+
+--// Lucide Roblox
+--// Loaded only when a page uses `icon = "icon-name"`.
+local LUCIDE_MODULE_URL =
+	"https://github.com/latte-soft/lucide-roblox/releases/latest/download/lucide-roblox.luau"
+
+local Lucide
+local lucideLoadAttempted = false
+
+local function getLucide()
+	if Lucide then
+		return Lucide
+	end
+
+	if lucideLoadAttempted then
+		return nil
+	end
+
+	lucideLoadAttempted = true
+
+	local success, result = pcall(function()
+		local source = game:HttpGet(LUCIDE_MODULE_URL)
+		local chunk, compileError = loadstring(source)
+
+		if not chunk then
+			error(compileError or "Failed to compile Lucide.")
+		end
+
+		return chunk()
+	end)
+
+	if success and typeof(result) == "table" then
+		Lucide = result
+		return Lucide
+	end
+
+	warn("[Burbanks] Lucide failed to load:", result)
+	return nil
+end
 
 local Library = {}
 Library.__index = Library
@@ -781,17 +820,75 @@ function Library:addPage(data)
 	bindTheme(self, accent, "BackgroundColor3", "Accent")
 	corner(accent, 5)
 
-	local icon = createLabel(
-		self,
-		background,
-		tostring(data.iconText or data.IconText or "◆"),
-		12,
-		Enum.Font.GothamBold
-	)
-	icon.Position = UDim2.fromOffset(12, 0)
-	icon.Size = UDim2.fromOffset(24, 38)
-	icon.TextXAlignment = Enum.TextXAlignment.Center
-	bindTheme(self, icon, "TextColor3", "Muted")
+	local iconName = data.icon or data.Icon
+	local fallbackIconText = tostring(data.iconText or data.IconText or "◆")
+	local icon
+
+	if iconName ~= nil then
+		local iconValue = tostring(iconName)
+
+		-- Direct Roblox image support remains available.
+		if iconValue:match("^rbxassetid://")
+			or iconValue:match("^https?://")
+			or tonumber(iconValue) then
+
+			local imageUrl = tonumber(iconValue)
+				and ("rbxassetid://" .. iconValue)
+				or iconValue
+
+			icon = create("ImageLabel", {
+				Parent = background,
+				BackgroundTransparency = 1,
+				Position = UDim2.fromOffset(14, 11),
+				Size = UDim2.fromOffset(18, 18),
+				Image = imageUrl,
+				ScaleType = Enum.ScaleType.Fit,
+			})
+
+			bindTheme(self, icon, "ImageColor3", "Muted")
+		else
+			-- Lucide icon-name support, for example: "home", "settings", "eye".
+			local lucide = getLucide()
+
+			if lucide and typeof(lucide.ImageLabel) == "function" then
+				local success, lucideIcon = pcall(function()
+					return lucide.ImageLabel(string.lower(iconValue), 48, {
+						Parent = background,
+						BackgroundTransparency = 1,
+						Position = UDim2.fromOffset(14, 11),
+						Size = UDim2.fromOffset(18, 18),
+						ScaleType = Enum.ScaleType.Fit,
+					})
+				end)
+
+				if success then
+					icon = lucideIcon
+					bindTheme(self, icon, "ImageColor3", "Muted")
+				else
+					warn(
+						("[Burbanks] Invalid Lucide icon '%s': %s")
+							:format(iconValue, tostring(lucideIcon))
+					)
+				end
+			end
+		end
+	end
+
+	-- Fallback for missing/invalid Lucide icons and old iconText calls.
+	if not icon then
+		icon = createLabel(
+			self,
+			background,
+			fallbackIconText,
+			12,
+			Enum.Font.GothamBold
+		)
+
+		icon.Position = UDim2.fromOffset(12, 0)
+		icon.Size = UDim2.fromOffset(24, 42)
+		icon.TextXAlignment = Enum.TextXAlignment.Center
+		bindTheme(self, icon, "TextColor3", "Muted")
+	end
 
 	local title = createLabel(self, background, page.title, 11, Enum.Font.GothamBold)
 	title.Position = UDim2.fromOffset(42, 0)
@@ -844,12 +941,13 @@ function Library:addPage(data)
 	end)
 
 	bindThemeRefresh(self, function()
-		if self.focusedPage == page then
-			page.buttonTitle.TextColor3 = self.theme.Text
-			page.icon.TextColor3 = self.theme.Accent
+		local selected = self.focusedPage == page
+		page.buttonTitle.TextColor3 = selected and self.theme.Text or self.theme.Muted
+
+		if page.icon:IsA("ImageLabel") or page.icon:IsA("ImageButton") then
+			page.icon.ImageColor3 = selected and self.theme.Accent or self.theme.Muted
 		else
-			page.buttonTitle.TextColor3 = self.theme.Muted
-			page.icon.TextColor3 = self.theme.Muted
+			page.icon.TextColor3 = selected and self.theme.Accent or self.theme.Muted
 		end
 	end)
 
@@ -875,7 +973,12 @@ function Library:SelectPage(data)
 		old.background.BackgroundTransparency = 1
 		old.accent.BackgroundTransparency = 1
 		old.buttonTitle.TextColor3 = self.theme.Muted
-		old.icon.TextColor3 = self.theme.Muted
+
+		if old.icon:IsA("ImageLabel") or old.icon:IsA("ImageButton") then
+			old.icon.ImageColor3 = self.theme.Muted
+		else
+			old.icon.TextColor3 = self.theme.Muted
+		end
 	end
 
 	self.focusedPage = selected
@@ -883,7 +986,12 @@ function Library:SelectPage(data)
 	selected.background.BackgroundTransparency = 0
 	selected.accent.BackgroundTransparency = 0
 	selected.buttonTitle.TextColor3 = self.theme.Text
-	selected.icon.TextColor3 = self.theme.Accent
+
+	if selected.icon:IsA("ImageLabel") or selected.icon:IsA("ImageButton") then
+		selected.icon.ImageColor3 = self.theme.Accent
+	else
+		selected.icon.TextColor3 = self.theme.Accent
+	end
 end
 
 Library.selectPage = Library.SelectPage
@@ -1949,4 +2057,3 @@ end
 Section.AddColorPicker = Section.addColorPicker
 
 return Library
-
