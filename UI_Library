@@ -579,7 +579,7 @@ function Library:Notify(data)
 		Parent = self.container,
 		AnchorPoint = Vector2.new(1, 1),
 		Position = UDim2.new(1, -16, 1, -16),
-		Size = UDim2.fromOffset(0, 74),
+		Size = UDim2.fromOffset(0, 120),
 		BorderSizePixel = 0,
 		ClipsDescendants = true,
 		ZIndex = 50,
@@ -606,8 +606,8 @@ function Library:Notify(data)
 		11,
 		Enum.Font.GothamBold
 	)
-	title.Position = UDim2.fromOffset(14, 8)
-	title.Size = UDim2.new(1, -76, 0, 18)
+	title.Position = UDim2.fromOffset(18, 12)
+	title.Size = UDim2.new(1, -100, 0, 22)
 	title.ZIndex = 51
 
 	local text = createLabel(
@@ -617,8 +617,8 @@ function Library:Notify(data)
 		10,
 		Enum.Font.Gotham
 	)
-	text.Position = UDim2.fromOffset(14, 28)
-	text.Size = UDim2.new(1, -76, 0, 34)
+	text.Position = UDim2.fromOffset(18, 40)
+	text.Size = UDim2.new(1, -100, 0, 60)
 	text.TextWrapped = true
 	text.TextYAlignment = Enum.TextYAlignment.Top
 	text.ZIndex = 51
@@ -626,8 +626,8 @@ function Library:Notify(data)
 
 	local yes = create("TextButton", {
 		Parent = holder,
-		Position = UDim2.new(1, -54, 0, 10),
-		Size = UDim2.fromOffset(20, 20),
+		Position = UDim2.new(1, -64, 0, 14),
+		Size = UDim2.fromOffset(28, 28),
 		BorderSizePixel = 0,
 		Font = Enum.Font.GothamBold,
 		Text = "✓",
@@ -641,8 +641,8 @@ function Library:Notify(data)
 
 	local no = create("TextButton", {
 		Parent = holder,
-		Position = UDim2.new(1, -28, 0, 10),
-		Size = UDim2.fromOffset(20, 20),
+		Position = UDim2.new(1, -64, 0, 46),
+		Size = UDim2.fromOffset(28, 28),
 		BorderSizePixel = 0,
 		Font = Enum.Font.GothamBold,
 		Text = "×",
@@ -658,11 +658,11 @@ function Library:Notify(data)
 		text.Text,
 		10,
 		Enum.Font.Gotham,
-		Vector2.new(240, 34)
+		Vector2.new(420, 70)
 	)
 
-	local width = math.clamp(measured.X + 110, 250, 340)
-	tween(holder, 0.2, {Size = UDim2.fromOffset(width, 74)})
+	local width = math.clamp(measured.X + 180, 380, 600)
+	tween(holder, 0.2, {Size = UDim2.fromOffset(width, 120)})
 
 	local closed = false
 
@@ -675,7 +675,7 @@ function Library:Notify(data)
 		safeCall(data.callback or data.Callback, result)
 
 		tween(holder, 0.2, {
-			Size = UDim2.fromOffset(0, 74),
+			Size = UDim2.fromOffset(0, 120),
 		}).Completed:Wait()
 
 		holder:Destroy()
