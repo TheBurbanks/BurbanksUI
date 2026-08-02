@@ -1,6 +1,18 @@
---// NeverVenyx.lua
---// Neverlose-inspired visuals with Venyx-style logic/API
---// Client-side only. Intended to be returned from loadstring.
+--[[
+
+██████╗ ██╗   ██╗██████╗ ██████╗  █████╗ ███╗   ██╗██╗  ██╗███████╗
+██╔══██╗██║   ██║██╔══██╗██╔══██╗██╔══██╗████╗  ██║██║ ██╔╝██╔════╝
+██████╔╝██║   ██║██████╔╝██████╔╝███████║██╔██╗ ██║█████╔╝ ███████╗
+██╔══██╗██║   ██║██╔══██╗██╔══██╗██╔══██║██║╚██╗██║██╔═██╗ ╚════██║
+██████╔╝╚██████╔╝██║  ██║██████╔╝██║  ██║██║ ╚████║██║  ██╗███████║
+╚═════╝  ╚═════╝ ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝╚══════╝
+                                                                   
+
+
+]]--                                                     
+
+
+
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -8,7 +20,7 @@ local TweenService = game:GetService("TweenService")
 local TextService = game:GetService("TextService")
 
 local LocalPlayer = Players.LocalPlayer
-assert(LocalPlayer, "Burbanks must run on the client.")
+assert(LocalPlayer, "NeverVenyx must run on the client.")
 
 local Library = {}
 Library.__index = Library
@@ -100,7 +112,7 @@ local function safeCall(callback, ...)
 
 	local success, message = pcall(callback, ...)
 	if not success then
-		warn("[NeverVenyx callback error]:", message)
+		warn("[Burbanks callback error]:", message)
 	end
 end
 
@@ -123,6 +135,11 @@ local function bindTheme(window, object, property, themeName)
 	}
 
 	object[property] = window.theme[themeName]
+end
+
+local function bindThemeRefresh(window, callback)
+	window._themeRefreshers[#window._themeRefreshers + 1] = callback
+	callback()
 end
 
 local function refreshCanvas(scrollingFrame, layout, extra)
@@ -221,7 +238,7 @@ local function createModule(section, height)
 	})
 
 	bindTheme(section.library, holder, "BackgroundColor3", "Card2")
-	corner(holder, 6)
+	corner(holder, 10)
 
 	local outline = stroke(holder, section.library.theme.Stroke, 0.15, 1)
 	bindTheme(section.library, outline, "Color", "Stroke")
@@ -248,12 +265,13 @@ function Library.new(data)
 
 	local self = setmetatable({}, Library)
 
-	self.title = tostring(data.title or data.Title or "NEVERVENYX")
-	self.subtitle = tostring(data.subtitle or data.Subtitle or "NEVERLOSE STYLE")
+	self.title = tostring(data.title or data.Title or "BURBANKS")
+	self.subtitle = tostring(data.subtitle or data.Subtitle or "PRIVATE BUILD")
 	self.theme = copyTable(DEFAULT_THEME)
 	self.pages = {}
 	self.focusedPage = nil
 	self._themeObjects = {}
+	self._themeRefreshers = {}
 	self._connections = {}
 	self._visible = true
 	self._busy = false
@@ -273,18 +291,6 @@ function Library.new(data)
 		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 	})
 
-	local shadow = create("ImageLabel", {
-		Parent = screenGui,
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromOffset(784, 524),
-		BackgroundTransparency = 1,
-		Image = "rbxassetid://5028857084",
-		ImageTransparency = 0.45,
-		ScaleType = Enum.ScaleType.Slice,
-		SliceCenter = Rect.new(24, 24, 276, 276),
-	})
-	bindTheme(self, shadow, "ImageColor3", "AccentDark")
 
 	local main = create("Frame", {
 		Name = "Main",
@@ -296,7 +302,7 @@ function Library.new(data)
 		ClipsDescendants = true,
 	})
 	bindTheme(self, main, "BackgroundColor3", "Background")
-	corner(main, 10)
+	corner(main, 16)
 
 	local mainStroke = stroke(main, self.theme.Stroke, 0, 1)
 	bindTheme(self, mainStroke, "Color", "Stroke")
@@ -308,6 +314,7 @@ function Library.new(data)
 		BorderSizePixel = 0,
 	})
 	bindTheme(self, topbar, "BackgroundColor3", "Topbar")
+	corner(topbar, 14)
 
 	local accentLine = create("Frame", {
 		Parent = topbar,
@@ -324,7 +331,7 @@ function Library.new(data)
 		BorderSizePixel = 0,
 	})
 	bindTheme(self, logoBox, "BackgroundColor3", "Accent")
-	corner(logoBox, 7)
+	corner(logoBox, 10)
 
 	local logoText = createLabel(self, logoBox, "N", 16, Enum.Font.GothamBold)
 	logoText.Size = UDim2.fromScale(1, 1)
@@ -348,7 +355,7 @@ function Library.new(data)
 		BorderSizePixel = 0,
 	})
 	bindTheme(self, status, "BackgroundColor3", "Card")
-	corner(status, 6)
+	corner(status, 9)
 
 	local statusStroke = stroke(status, self.theme.Stroke, 0.25, 1)
 	bindTheme(self, statusStroke, "Color", "Stroke")
@@ -387,6 +394,7 @@ function Library.new(data)
 		BorderSizePixel = 0,
 	})
 	bindTheme(self, sidebar, "BackgroundColor3", "Sidebar")
+	corner(sidebar, 12)
 
 	local sideBorder = create("Frame", {
 		Parent = sidebar,
@@ -415,7 +423,7 @@ function Library.new(data)
 	local pageLayout = create("UIListLayout", {
 		Parent = pageButtons,
 		SortOrder = Enum.SortOrder.LayoutOrder,
-		Padding = UDim.new(0, 7),
+		Padding = UDim.new(0, 9),
 	})
 	refreshCanvas(pageButtons, pageLayout, 10)
 
@@ -436,7 +444,7 @@ function Library.new(data)
 		BorderSizePixel = 0,
 	})
 	bindTheme(self, contentHeader, "BackgroundColor3", "Card")
-	corner(contentHeader, 8)
+	corner(contentHeader, 12)
 
 	local contentHeaderStroke = stroke(contentHeader, self.theme.Stroke, 0.2, 1)
 	bindTheme(self, contentHeaderStroke, "Color", "Stroke")
@@ -451,7 +459,6 @@ function Library.new(data)
 	bindTheme(self, contentHeaderSub, "TextColor3", "Muted")
 
 	self.container = screenGui
-	self.shadow = shadow
 	self.main = main
 	self.topbar = topbar
 	self.titleLabel = titleLabel
@@ -474,12 +481,19 @@ Library.CreateWindow = Library.new
 Library.Create = Library.new
 
 function Library:setTitle(title)
-	self.title = tostring(title or "NEVERVENYX")
+	self.title = tostring(title or "BURBANKS")
 	self.container.Name = self.title
 	self.titleLabel.Text = self.title
 end
 
 Library.SetTitle = Library.setTitle
+
+function Library:setSubtitle(subtitle)
+	self.subtitle = tostring(subtitle or "")
+	self.subtitleLabel.Text = self.subtitle
+end
+
+Library.SetSubtitle = Library.setSubtitle
 
 function Library:setTheme(data, color)
 	local themeName
@@ -506,6 +520,13 @@ function Library:setTheme(data, color)
 		end
 	end
 
+	for _, refresher in ipairs(self._themeRefreshers) do
+		local success, message = pcall(refresher)
+		if not success then
+			warn("[Burbanks theme refresh error]:", message)
+		end
+	end
+
 	return true
 end
 
@@ -526,17 +547,10 @@ function Library:toggle(forceState)
 
 	if self._visible then
 		self.main.Visible = true
-		self.shadow.Visible = true
 		self.main.Size = UDim2.fromOffset(self.openSize.X.Offset, 0)
-		self.shadow.Size = UDim2.fromOffset(self.openSize.X.Offset + 18, 18)
 
 		tween(self.main, 0.22, {
 			Size = self.openSize,
-			Position = self.openPosition,
-		})
-
-		tween(self.shadow, 0.22, {
-			Size = UDim2.fromOffset(self.openSize.X.Offset + 18, self.openSize.Y.Offset + 18),
 			Position = self.openPosition,
 		}).Completed:Wait()
 	else
@@ -545,14 +559,9 @@ function Library:toggle(forceState)
 
 		tween(self.main, 0.2, {
 			Size = UDim2.fromOffset(self.main.AbsoluteSize.X, 0),
-		})
-
-		tween(self.shadow, 0.2, {
-			Size = UDim2.fromOffset(self.main.AbsoluteSize.X + 18, 18),
 		}).Completed:Wait()
 
 		self.main.Visible = false
-		self.shadow.Visible = false
 	end
 
 	self._busy = false
@@ -582,7 +591,7 @@ function Library:Notify(data)
 	})
 	bindTheme(self, holder, "BackgroundColor3", "Card")
 
-	corner(holder, 8)
+	corner(holder, 12)
 
 	local holderStroke = stroke(holder, self.theme.Stroke, 0, 1)
 	bindTheme(self, holderStroke, "Color", "Stroke")
@@ -633,7 +642,7 @@ function Library:Notify(data)
 	})
 	bindTheme(self, yes, "BackgroundColor3", "Accent")
 	yes.TextColor3 = Color3.fromRGB(4, 12, 18)
-	corner(yes, 5)
+	corner(yes, 8)
 
 	local no = create("TextButton", {
 		Parent = holder,
@@ -648,7 +657,7 @@ function Library:Notify(data)
 	})
 	bindTheme(self, no, "BackgroundColor3", "Card2")
 	bindTheme(self, no, "TextColor3", "Muted")
-	corner(no, 5)
+	corner(no, 8)
 
 	local measured = TextService:GetTextSize(
 		text.Text,
@@ -710,7 +719,7 @@ function Library:addPage(data)
 
 	local button = create("TextButton", {
 		Parent = self.pagesContainer,
-		Size = UDim2.new(1, 0, 0, 38),
+		Size = UDim2.new(1, 0, 0, 42),
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		Text = "",
@@ -724,7 +733,7 @@ function Library:addPage(data)
 		BackgroundTransparency = 1,
 	})
 	bindTheme(self, background, "BackgroundColor3", "Card")
-	corner(background, 6)
+	corner(background, 10)
 
 	local accent = create("Frame", {
 		Parent = background,
@@ -734,7 +743,7 @@ function Library:addPage(data)
 		BackgroundTransparency = 1,
 	})
 	bindTheme(self, accent, "BackgroundColor3", "Accent")
-	corner(accent, 3)
+	corner(accent, 5)
 
 	local icon = createLabel(
 		self,
@@ -755,8 +764,8 @@ function Library:addPage(data)
 
 	local container = create("ScrollingFrame", {
 		Parent = self.content,
-		Position = UDim2.fromOffset(14, 66),
-		Size = UDim2.new(1, -28, 1, -80),
+		Position = UDim2.fromOffset(16, 68),
+		Size = UDim2.new(1, -32, 1, -84),
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		CanvasSize = UDim2.new(),
@@ -768,7 +777,7 @@ function Library:addPage(data)
 	local layout = create("UIListLayout", {
 		Parent = container,
 		SortOrder = Enum.SortOrder.LayoutOrder,
-		Padding = UDim.new(0, 10),
+		Padding = UDim.new(0, 12),
 	})
 	refreshCanvas(container, layout, 12)
 
@@ -796,6 +805,16 @@ function Library:addPage(data)
 
 	button.MouseButton1Click:Connect(function()
 		self:SelectPage({page = page})
+	end)
+
+	bindThemeRefresh(self, function()
+		if self.focusedPage == page then
+			page.buttonTitle.TextColor3 = self.theme.Text
+			page.icon.TextColor3 = self.theme.Accent
+		else
+			page.buttonTitle.TextColor3 = self.theme.Muted
+			page.icon.TextColor3 = self.theme.Muted
+		end
 	end)
 
 	if #self.pages == 1 then
@@ -871,7 +890,7 @@ function Page:addSection(data)
 		BorderSizePixel = 0,
 	})
 	bindTheme(self.library, card, "BackgroundColor3", "Card")
-	corner(card, 8)
+	corner(card, 12)
 
 	local cardStroke = stroke(card, self.library.theme.Stroke, 0.1, 1)
 	bindTheme(self.library, cardStroke, "Color", "Stroke")
@@ -906,7 +925,7 @@ function Page:addSection(data)
 	create("UIListLayout", {
 		Parent = moduleContainer,
 		SortOrder = Enum.SortOrder.LayoutOrder,
-		Padding = UDim.new(0, 6),
+		Padding = UDim.new(0, 8),
 	})
 
 	padding(moduleContainer, 0, 0, 0, 10)
@@ -928,7 +947,7 @@ function Section:addButton(data)
 		callback = data.callback or data.Callback or function() end,
 	}
 
-	local module = createModule(self, 38)
+	local module = createModule(self, 42)
 
 	local button = create("TextButton", {
 		Parent = module,
@@ -956,9 +975,9 @@ function Section:addButton(data)
 	end)
 
 	button.MouseButton1Click:Connect(function()
-		tween(module, 0.07, {Size = UDim2.new(1, -5, 0, 38)})
+		tween(module, 0.07, {Size = UDim2.new(1, -5, 0, 42)})
 		task.wait(0.07)
-		tween(module, 0.07, {Size = UDim2.new(1, 0, 0, 38)})
+		tween(module, 0.07, {Size = UDim2.new(1, 0, 0, 42)})
 		safeCall(options.callback)
 	end)
 
@@ -997,7 +1016,7 @@ function Section:addToggle(data)
 		callback = data.callback or data.Callback or function() end,
 	}
 
-	local module = createModule(self, 38)
+	local module = createModule(self, 42)
 	local button = create("TextButton", {
 		Parent = module,
 		Size = UDim2.fromScale(1, 1),
@@ -1012,11 +1031,11 @@ function Section:addToggle(data)
 		Parent = button,
 		AnchorPoint = Vector2.new(1, 0.5),
 		Position = UDim2.new(1, -12, 0.5, 0),
-		Size = UDim2.fromOffset(42, 20),
+		Size = UDim2.fromOffset(44, 22),
 		BorderSizePixel = 0,
 	})
 	bindTheme(self.library, track, "BackgroundColor3", "Background2")
-	corner(track, 10)
+	corner(track, 12)
 
 	local trackStroke = stroke(track, self.library.theme.Stroke, 0.1, 1)
 	bindTheme(self.library, trackStroke, "Color", "Stroke")
@@ -1024,14 +1043,14 @@ function Section:addToggle(data)
 	local knob = create("Frame", {
 		Parent = track,
 		AnchorPoint = Vector2.new(0, 0.5),
-		Size = UDim2.fromOffset(14, 14),
+		Size = UDim2.fromOffset(16, 16),
 		BorderSizePixel = 0,
 	})
-	corner(knob, 8)
+	corner(knob, 10)
 
 	local function refresh(animated)
 		local position = options.toggled
-			and UDim2.new(1, -17, 0.5, 0)
+			and UDim2.new(1, -19, 0.5, 0)
 			or UDim2.new(0, 3, 0.5, 0)
 
 		local color = options.toggled
@@ -1058,7 +1077,9 @@ function Section:addToggle(data)
 		end
 	end
 
-	refresh(false)
+	bindThemeRefresh(self.library, function()
+		refresh(false)
+	end)
 
 	button.MouseButton1Click:Connect(function()
 		options.toggled = not options.toggled
@@ -1129,7 +1150,7 @@ function Section:addTextbox(data)
 		BorderSizePixel = 0,
 	})
 	bindTheme(self.library, holder, "BackgroundColor3", "Background2")
-	corner(holder, 5)
+	corner(holder, 8)
 
 	local holderStroke = stroke(holder, self.library.theme.Stroke, 0.15, 1)
 	bindTheme(self.library, holderStroke, "Color", "Stroke")
@@ -1248,7 +1269,7 @@ function Section:addSlider(data)
 		BorderSizePixel = 0,
 	})
 	bindTheme(self.library, bar, "BackgroundColor3", "Background2")
-	corner(bar, 3)
+	corner(bar, 6)
 
 	local fill = create("Frame", {
 		Parent = bar,
@@ -1256,7 +1277,7 @@ function Section:addSlider(data)
 		BorderSizePixel = 0,
 	})
 	bindTheme(self.library, fill, "BackgroundColor3", "Accent")
-	corner(fill, 3)
+	corner(fill, 6)
 
 	local knob = create("Frame", {
 		Parent = fill,
@@ -1266,7 +1287,7 @@ function Section:addSlider(data)
 		BorderSizePixel = 0,
 	})
 	bindTheme(self.library, knob, "BackgroundColor3", "Text")
-	corner(knob, 7)
+	corner(knob, 8)
 
 	local dragging = false
 
@@ -1387,7 +1408,7 @@ function Section:addKeybind(data)
 		changedCallback = data.changedCallback or function() end,
 	}
 
-	local module = createModule(self, 38)
+	local module = createModule(self, 42)
 	local button = create("TextButton", {
 		Parent = module,
 		Size = UDim2.fromScale(1, 1),
@@ -1410,7 +1431,7 @@ function Section:addKeybind(data)
 	})
 	bindTheme(self.library, keyBox, "BackgroundColor3", "Background2")
 	bindTheme(self.library, keyBox, "TextColor3", "Accent")
-	corner(keyBox, 5)
+	corner(keyBox, 8)
 
 	local keyStroke = stroke(keyBox, self.library.theme.Stroke, 0.15, 1)
 	bindTheme(self.library, keyStroke, "Color", "Stroke")
@@ -1525,12 +1546,12 @@ function Section:addDropdown(data)
 		options.list[#options.list + 1] = tostring(value)
 	end
 
-	local module = createModule(self, 40)
+	local module = createModule(self, 44)
 	module.ClipsDescendants = true
 
 	local header = create("TextButton", {
 		Parent = module,
-		Size = UDim2.new(1, 0, 0, 40),
+		Size = UDim2.new(1, 0, 0, 44),
 		BackgroundTransparency = 1,
 		Text = "",
 		AutoButtonColor = false,
@@ -1565,7 +1586,7 @@ function Section:addDropdown(data)
 	bindTheme(self.library, search, "BackgroundColor3", "Background2")
 	bindTheme(self.library, search, "TextColor3", "Text")
 	bindTheme(self.library, search, "PlaceholderColor3", "Muted")
-	corner(search, 5)
+	corner(search, 8)
 
 	local list = create("ScrollingFrame", {
 		Parent = module,
@@ -1582,7 +1603,7 @@ function Section:addDropdown(data)
 	local layout = create("UIListLayout", {
 		Parent = list,
 		SortOrder = Enum.SortOrder.LayoutOrder,
-		Padding = UDim.new(0, 5),
+		Padding = UDim.new(0, 7),
 	})
 	refreshCanvas(list, layout, 5)
 
@@ -1595,7 +1616,7 @@ function Section:addDropdown(data)
 
 		tween(arrow, 0.15, {Rotation = opened and 180 or 0})
 		tween(module, 0.18, {
-			Size = UDim2.new(1, 0, 0, opened and 188 or 40),
+			Size = UDim2.new(1, 0, 0, opened and 194 or 44),
 		})
 	end
 
@@ -1624,7 +1645,7 @@ function Section:addDropdown(data)
 				})
 				bindTheme(self.library, entry, "BackgroundColor3", "Background2")
 				bindTheme(self.library, entry, "TextColor3", "Muted")
-				corner(entry, 5)
+				corner(entry, 8)
 
 				entry.MouseEnter:Connect(function()
 					tween(entry, 0.12, {
@@ -1735,12 +1756,12 @@ function Section:addColorPicker(data)
 		callback = data.callback or data.Callback or function() end,
 	}
 
-	local module = createModule(self, 40)
+	local module = createModule(self, 44)
 	module.ClipsDescendants = true
 
 	local header = create("TextButton", {
 		Parent = module,
-		Size = UDim2.new(1, 0, 0, 40),
+		Size = UDim2.new(1, 0, 0, 44),
 		BackgroundTransparency = 1,
 		Text = "",
 		AutoButtonColor = false,
@@ -1756,7 +1777,7 @@ function Section:addColorPicker(data)
 		BorderSizePixel = 0,
 		BackgroundColor3 = options.color3,
 	})
-	corner(preview, 5)
+	corner(preview, 8)
 
 	local previewStroke = stroke(preview, self.library.theme.Stroke, 0.2, 1)
 	bindTheme(self.library, previewStroke, "Color", "Stroke")
@@ -1772,7 +1793,7 @@ function Section:addColorPicker(data)
 	create("UIListLayout", {
 		Parent = inputs,
 		FillDirection = Enum.FillDirection.Horizontal,
-		Padding = UDim.new(0, 6),
+		Padding = UDim.new(0, 8),
 	})
 
 	local boxes = {}
@@ -1789,7 +1810,7 @@ function Section:addColorPicker(data)
 		})
 		bindTheme(self.library, box, "BackgroundColor3", "Background2")
 		bindTheme(self.library, box, "TextColor3", "Text")
-		corner(box, 5)
+		corner(box, 8)
 		boxes[channel] = box
 	end
 
@@ -1806,7 +1827,7 @@ function Section:addColorPicker(data)
 	})
 	bindTheme(self.library, apply, "BackgroundColor3", "Accent")
 	apply.TextColor3 = Color3.fromRGB(4, 12, 18)
-	corner(apply, 5)
+	corner(apply, 8)
 
 	local opened = false
 
@@ -1823,7 +1844,7 @@ function Section:addColorPicker(data)
 		apply.Visible = opened
 
 		tween(module, 0.18, {
-			Size = UDim2.new(1, 0, 0, opened and 118 or 40),
+			Size = UDim2.new(1, 0, 0, opened and 124 or 44),
 		})
 	end
 
@@ -1892,3 +1913,4 @@ end
 Section.AddColorPicker = Section.addColorPicker
 
 return Library
+
