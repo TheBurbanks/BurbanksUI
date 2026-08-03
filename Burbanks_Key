@@ -1,4 +1,5 @@
 
+
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
@@ -329,6 +330,7 @@ function KeySystem.new(data)
         stroke(getKeyButton, THEME.Stroke, 0.15, 1)
     end
 
+    -- Original full-width bottom progress line, with slight rounding
     local progressTrack = create("Frame", {
         Parent = main,
         AnchorPoint = Vector2.new(0, 1),
@@ -336,7 +338,9 @@ function KeySystem.new(data)
         Size = UDim2.new(1, 0, 0, 3),
         BorderSizePixel = 0,
         BackgroundColor3 = THEME.Background2,
+        ClipsDescendants = true,
     })
+    corner(progressTrack, 2)
 
     local progressFill = create("Frame", {
         Parent = progressTrack,
@@ -344,6 +348,7 @@ function KeySystem.new(data)
         BorderSizePixel = 0,
         BackgroundColor3 = THEME.Accent,
     })
+    corner(progressFill, 2)
 
     self.container = gui
     self.main = main
