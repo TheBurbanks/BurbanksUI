@@ -1,0 +1,565 @@
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+
+local LocalPlayer = Players.LocalPlayer
+assert(LocalPlayer, "Burbanks Key System must run on the client.")
+
+local KeySystem = {}
+KeySystem.__index = KeySystem
+
+local THEME = {
+    Background = Color3.fromRGB(8, 11, 17),
+    Background2 = Color3.fromRGB(11, 16, 25),
+    Topbar = Color3.fromRGB(9, 14, 21),
+    Card = Color3.fromRGB(14, 20, 30),
+    Card2 = Color3.fromRGB(18, 26, 38),
+    Stroke = Color3.fromRGB(27, 39, 57),
+    Accent = Color3.fromRGB(0, 191, 255),
+    Text = Color3.fromRGB(238, 244, 255),
+    Muted = Color3.fromRGB(132, 146, 166),
+    Success = Color3.fromRGB(72, 222, 152),
+    Danger = Color3.fromRGB(255, 88, 105),
+}
+
+local function create(className, properties)
+    local object = Instance.new(className)
+    for property, value in pairs(properties or {}) do
+        object[property] = value
+    end
+    return object
+end
+
+local function corner(object, radius)
+    create("UICorner", {
+        Parent = object,
+        CornerRadius = UDim.new(0, radius or 8),
+    })
+end
+
+local function stroke(object, color, transparency, thickness)
+    return create("UIStroke", {
+        Parent = object,
+        Color = color,
+        Transparency = transparency or 0,
+        Thickness = thickness or 1,
+    })
+end
+
+local function tween(object, duration, properties, style)
+    local animation = TweenService:Create(
+        object,
+        TweenInfo.new(
+            duration or 0.18,
+            style or Enum.EasingStyle.Quad,
+            Enum.EasingDirection.Out
+        ),
+        properties
+    )
+    animation:Play()
+    return animation
+end
+
+local function safeCall(callback, ...)
+    if typeof(callback) ~= "function" then
+        return
+    end
+
+    local success, message = pcall(callback, ...)
+    if not success then
+        warn("[Burbanks Key System]:", message)
+    end
+end
+
+local function guiParent()
+    if typeof(gethui) == "function" then
+        local success, result = pcall(gethui)
+        if success and result then
+            return result
+        end
+    end
+
+    return LocalPlayer:WaitForChild("PlayerGui")
+end
+
+local function makeDraggable(handle, target)
+    local dragging = false
+    local dragStart
+    local startPosition
+
+    handle.Active = true
+
+    handle.InputBegan:Connect(function(inputObject)
+        if inputObject.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = inputObject.Position
+            startPosition = target.Position
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(inputObject)
+        if dragging and inputObject.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = inputObject.Position - dragStart
+            target.Position = UDim2.new(
+                startPosition.X.Scale,
+                startPosition.X.Offset + delta.X,
+                startPosition.Y.Scale,
+                startPosition.Y.Offset + delta.Y
+            )
+        end
+    end)
+
+    UserInputService.InputEnded:Connect(function(inputObject)
+        if inputObject.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end)
+end
+
+local function trim(value)
+    return tostring(value or ""):gsub("^%s+", ""):gsub("%s+$", "")
+end
+
+function KeySystem.new(data)
+    data = data or {}
+
+    local self = setmetatable({}, KeySystem)
+
+    self.title = tostring(data.title or "BURBANKS")
+    self.subtitle = tostring(data.subtitle or "KEY SYSTEM")
+    self.description = tostring(data.description or "Enter your access key below to continue.")
+    self.validKey = data.key
+    self.validKeys = data.keys
+    self.caseSensitive = data.caseSensitive == true
+    self.onSuccess = data.onSuccess or data.callback
+    self.onFailure = data.onFailure
+    self.validate = data.validate
+    self.getKeyCallback = data.getKeyCallback
+    self.closeOnSuccess = data.closeOnSuccess ~= false
+    self._busy = false
+    self._destroyed = false
+
+    local gui = create("ScreenGui", {
+        Name = self.title .. "_KeySystem",
+        Parent = guiParent(),
+        ResetOnSpawn = false,
+        ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+    })
+
+    local main = create("Frame", {
+        Parent = gui,
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Position = UDim2.fromScale(0.5, 0.5),
+        Size = UDim2.fromOffset(470, 300),
+        BorderSizePixel = 0,
+        ClipsDescendants = true,
+        BackgroundColor3 = THEME.Background,
+    })
+    corner(main, 16)
+    stroke(main, THEME.Stroke, 0, 1)
+
+    local topbar = create("Frame", {
+        Parent = main,
+        Size = UDim2.new(1, 0, 0, 58),
+        BorderSizePixel = 0,
+        BackgroundColor3 = THEME.Topbar,
+    })
+    corner(topbar, 14)
+
+    create("Frame", {
+        Parent = topbar,
+        Position = UDim2.new(0, 0, 1, -2),
+        Size = UDim2.new(1, 0, 0, 2),
+        BorderSizePixel = 0,
+        BackgroundColor3 = THEME.Accent,
+    })
+
+    local logo = create("Frame", {
+        Parent = topbar,
+        Position = UDim2.fromOffset(14, 13),
+        Size = UDim2.fromOffset(32, 32),
+        BorderSizePixel = 0,
+        BackgroundColor3 = THEME.Accent,
+    })
+    corner(logo, 10)
+
+    create("TextLabel", {
+        Parent = logo,
+        BackgroundTransparency = 1,
+        Size = UDim2.fromScale(1, 1),
+        Font = Enum.Font.GothamBold,
+        Text = "B",
+        TextColor3 = Color3.fromRGB(4, 12, 18),
+        TextSize = 16,
+    })
+
+    local titleLabel = create("TextLabel", {
+        Parent = topbar,
+        BackgroundTransparency = 1,
+        Position = UDim2.fromOffset(56, 9),
+        Size = UDim2.new(1, -110, 0, 22),
+        Font = Enum.Font.GothamBold,
+        Text = self.title,
+        TextColor3 = THEME.Text,
+        TextSize = 15,
+        TextXAlignment = Enum.TextXAlignment.Left,
+    })
+
+    local subtitleLabel = create("TextLabel", {
+        Parent = topbar,
+        BackgroundTransparency = 1,
+        Position = UDim2.fromOffset(56, 30),
+        Size = UDim2.new(1, -110, 0, 16),
+        Font = Enum.Font.GothamBold,
+        Text = self.subtitle,
+        TextColor3 = THEME.Accent,
+        TextSize = 9,
+        TextXAlignment = Enum.TextXAlignment.Left,
+    })
+
+    local closeButton = create("TextButton", {
+        Parent = topbar,
+        AnchorPoint = Vector2.new(1, 0.5),
+        Position = UDim2.new(1, -15, 0.5, 0),
+        Size = UDim2.fromOffset(28, 28),
+        BackgroundTransparency = 1,
+        Font = Enum.Font.GothamBold,
+        Text = "x",
+        TextColor3 = THEME.Muted,
+        TextSize = 15,
+        AutoButtonColor = false,
+    })
+
+    local card = create("Frame", {
+        Parent = main,
+        Position = UDim2.fromOffset(16, 74),
+        Size = UDim2.new(1, -32, 1, -90),
+        BorderSizePixel = 0,
+        BackgroundColor3 = THEME.Card,
+    })
+    corner(card, 12)
+    stroke(card, THEME.Stroke, 0.15, 1)
+
+    local descriptionLabel = create("TextLabel", {
+        Parent = card,
+        BackgroundTransparency = 1,
+        Position = UDim2.fromOffset(18, 15),
+        Size = UDim2.new(1, -36, 0, 42),
+        Font = Enum.Font.GothamMedium,
+        Text = self.description,
+        TextColor3 = THEME.Muted,
+        TextSize = 12,
+        TextWrapped = true,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextYAlignment = Enum.TextYAlignment.Top,
+    })
+
+    local inputHolder = create("Frame", {
+        Parent = card,
+        Position = UDim2.fromOffset(18, 65),
+        Size = UDim2.new(1, -36, 0, 44),
+        BorderSizePixel = 0,
+        BackgroundColor3 = THEME.Background2,
+    })
+    corner(inputHolder, 10)
+
+    local inputStroke = stroke(inputHolder, THEME.Stroke, 0.1, 1)
+
+    local keyBox = create("TextBox", {
+        Parent = inputHolder,
+        Position = UDim2.fromOffset(13, 0),
+        Size = UDim2.new(1, -26, 1, 0),
+        BackgroundTransparency = 1,
+        ClearTextOnFocus = false,
+        Font = Enum.Font.GothamMedium,
+        PlaceholderText = tostring(data.placeholder or "ENTER KEY..."),
+        PlaceholderColor3 = THEME.Muted,
+        Text = "",
+        TextColor3 = THEME.Text,
+        TextSize = 12,
+        TextXAlignment = Enum.TextXAlignment.Left,
+    })
+
+    local statusLabel = create("TextLabel", {
+        Parent = card,
+        BackgroundTransparency = 1,
+        Position = UDim2.fromOffset(18, 114),
+        Size = UDim2.new(1, -36, 0, 20),
+        Font = Enum.Font.GothamMedium,
+        Text = "",
+        TextColor3 = THEME.Muted,
+        TextSize = 10,
+        TextXAlignment = Enum.TextXAlignment.Left,
+    })
+
+    local hasGetKey = typeof(self.getKeyCallback) == "function"
+
+    local submitButton = create("TextButton", {
+        Parent = card,
+        Position = UDim2.fromOffset(18, 143),
+        Size = hasGetKey and UDim2.new(0.62, -21, 0, 42) or UDim2.new(1, -36, 0, 42),
+        BorderSizePixel = 0,
+        BackgroundColor3 = THEME.Accent,
+        Font = Enum.Font.GothamBold,
+        Text = tostring(data.submitText or "VERIFY KEY"),
+        TextColor3 = Color3.fromRGB(4, 12, 18),
+        TextSize = 11,
+        AutoButtonColor = false,
+    })
+    corner(submitButton, 10)
+
+    local getKeyButton
+
+    if hasGetKey then
+        getKeyButton = create("TextButton", {
+            Parent = card,
+            AnchorPoint = Vector2.new(1, 0),
+            Position = UDim2.new(1, -18, 0, 143),
+            Size = UDim2.new(0.38, -3, 0, 42),
+            BorderSizePixel = 0,
+            BackgroundColor3 = THEME.Card2,
+            Font = Enum.Font.GothamBold,
+            Text = tostring(data.getKeyText or "GET KEY"),
+            TextColor3 = THEME.Text,
+            TextSize = 11,
+            AutoButtonColor = false,
+        })
+        corner(getKeyButton, 10)
+        stroke(getKeyButton, THEME.Stroke, 0.15, 1)
+    end
+
+    local progressTrack = create("Frame", {
+        Parent = main,
+        AnchorPoint = Vector2.new(0, 1),
+        Position = UDim2.new(0, 0, 1, 0),
+        Size = UDim2.new(1, 0, 0, 3),
+        BorderSizePixel = 0,
+        BackgroundColor3 = THEME.Background2,
+    })
+
+    local progressFill = create("Frame", {
+        Parent = progressTrack,
+        Size = UDim2.new(0, 0, 1, 0),
+        BorderSizePixel = 0,
+        BackgroundColor3 = THEME.Accent,
+    })
+
+    self.container = gui
+    self.main = main
+    self.titleLabel = titleLabel
+    self.subtitleLabel = subtitleLabel
+    self.descriptionLabel = descriptionLabel
+    self.keyBox = keyBox
+    self.statusLabel = statusLabel
+    self.inputStroke = inputStroke
+    self.progressFill = progressFill
+
+    makeDraggable(topbar, main)
+
+    local function setStatus(message, color)
+        statusLabel.Text = tostring(message or "")
+        statusLabel.TextColor3 = color or THEME.Muted
+    end
+
+    local function animateProgress(duration, color)
+        progressFill.Size = UDim2.new(0, 0, 1, 0)
+        progressFill.BackgroundColor3 = color or THEME.Accent
+
+        tween(
+            progressFill,
+            duration or 0.4,
+            {Size = UDim2.new(1, 0, 1, 0)},
+            Enum.EasingStyle.Linear
+        )
+    end
+
+    local function keysMatch(left, right)
+        left = trim(left)
+        right = trim(right)
+
+        if not self.caseSensitive then
+            left = string.lower(left)
+            right = string.lower(right)
+        end
+
+        return left == right
+    end
+
+    local function isValid(input)
+        if typeof(self.validate) == "function" then
+            local success, result, message = pcall(self.validate, input)
+
+            if not success then
+                return false, "Validation error."
+            end
+
+            return result == true, message
+        end
+
+        if typeof(self.validKeys) == "table" then
+            for _, value in ipairs(self.validKeys) do
+                if keysMatch(input, value) then
+                    return true
+                end
+            end
+
+            return false
+        end
+
+        if self.validKey ~= nil then
+            return keysMatch(input, self.validKey)
+        end
+
+        return false, "No valid key is configured."
+    end
+
+    function self:Submit()
+        if self._busy or self._destroyed then
+            return
+        end
+
+        self._busy = true
+        local enteredKey = trim(keyBox.Text)
+
+        setStatus("Checking key...", THEME.Accent)
+        animateProgress(0.3, THEME.Accent)
+
+        task.wait(0.15)
+
+        local valid, message = isValid(enteredKey)
+
+        if valid then
+            setStatus(tostring(data.successText or "Key accepted. Loading..."), THEME.Success)
+            tween(inputStroke, 0.15, {Color = THEME.Success})
+            animateProgress(0.6, THEME.Success)
+
+            safeCall(self.onSuccess, enteredKey, self)
+
+            if self.closeOnSuccess then
+                task.delay(0.6, function()
+                    if not self._destroyed then
+                        self:Destroy()
+                    end
+                end)
+            else
+                self._busy = false
+            end
+        else
+            setStatus(tostring(message or data.failureText or "Invalid key. Try again."), THEME.Danger)
+            tween(inputStroke, 0.15, {Color = THEME.Danger})
+            animateProgress(0.45, THEME.Danger)
+
+            local original = main.Position
+
+            for _, offset in ipairs({-7, 7, -5, 5, 0}) do
+                tween(
+                    main,
+                    0.05,
+                    {Position = original + UDim2.fromOffset(offset, 0)},
+                    Enum.EasingStyle.Linear
+                ).Completed:Wait()
+            end
+
+            main.Position = original
+            safeCall(self.onFailure, enteredKey, self)
+
+            task.delay(0.6, function()
+                if inputStroke.Parent then
+                    tween(inputStroke, 0.15, {Color = THEME.Stroke})
+                end
+            end)
+
+            self._busy = false
+        end
+    end
+
+    submitButton.MouseButton1Click:Connect(function()
+        self:Submit()
+    end)
+
+    keyBox.FocusLost:Connect(function(enterPressed)
+        if enterPressed then
+            self:Submit()
+        elseif not self._busy then
+            tween(inputStroke, 0.15, {Color = THEME.Stroke})
+        end
+    end)
+
+    keyBox.Focused:Connect(function()
+        tween(inputStroke, 0.15, {Color = THEME.Accent})
+    end)
+
+    if getKeyButton then
+        getKeyButton.MouseButton1Click:Connect(function()
+            safeCall(self.getKeyCallback, self)
+        end)
+    end
+
+    closeButton.MouseButton1Click:Connect(function()
+        self:Destroy()
+    end)
+
+    main.Size = UDim2.fromOffset(470, 0)
+    tween(main, 0.25, {Size = UDim2.fromOffset(470, 300)})
+
+    return self
+end
+
+function KeySystem:Create(data)
+    return KeySystem.new(data)
+end
+
+function KeySystem:SetTitle(value)
+    self.title = tostring(value or "")
+    self.titleLabel.Text = self.title
+end
+
+function KeySystem:SetSubtitle(value)
+    self.subtitle = tostring(value or "")
+    self.subtitleLabel.Text = self.subtitle
+end
+
+function KeySystem:SetDescription(value)
+    self.description = tostring(value or "")
+    self.descriptionLabel.Text = self.description
+end
+
+function KeySystem:SetInput(value)
+    self.keyBox.Text = tostring(value or "")
+end
+
+function KeySystem:GetInput()
+    return self.keyBox.Text
+end
+
+function KeySystem:SetStatus(message, state)
+    self.statusLabel.Text = tostring(message or "")
+    self.statusLabel.TextColor3 = state == true
+        and THEME.Success
+        or state == false
+            and THEME.Danger
+            or THEME.Muted
+end
+
+function KeySystem:Destroy()
+    if self._destroyed then
+        return
+    end
+
+    self._destroyed = true
+
+    if self.main and self.main.Parent then
+        tween(
+            self.main,
+            0.2,
+            {Size = UDim2.fromOffset(self.main.AbsoluteSize.X, 0)}
+        ).Completed:Wait()
+    end
+
+    if self.container then
+        self.container:Destroy()
+    end
+end
+
+return KeySystem
